@@ -1,0 +1,95 @@
+#!/usr/bin/bash
+
+# Ask for sudo access at start of script
+if [ $EUID != 0 ]; then
+    sudo "$0" "$@"
+    exit $?
+fi
+
+# initial upgrade of system
+sudo apt-get update -yy
+sudo apt-get upgrade -yy
+
+# useful packages
+apt install wget -y
+apt install curl -y
+apt install python3-pip -y
+apt install tmux -y
+apt install git -y
+apt install batcat -y
+apt install exa -y
+apt install fd-find -y
+apt install unzip
+
+# git configurations
+git config --global user.email "609372+madsaune@users.noreply.github.com"
+git config --global user.name "Mads Moi-Aune"
+git config --system core.editor "nvim"
+
+# install Golang
+GO_VERSION=1.16.6
+GO_FOLDER=go${GO_VERSION}.linux-amd64
+GO_ARC=${GO_FOLDER}.tar.gz
+GO_LOC=/usr/local
+
+wget https://dl.google.com/go/${GO_ARC}
+sudo tar xvzf ${GO_ARC} -C ${GO_LOC}
+
+rm -rf ${GO_ARC}
+
+# node version manager
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+nvm install node
+
+# setup FD
+ln -s "$(command -v fdfind)" /usr/local/bin/fd
+
+# setup rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup override set stable
+rustup update stable
+
+# setup alacritty
+git clone https://github.com/alacritty/alacritty.git
+cd alacritty || return
+apt install cmake pkg-config libfreetype6-dev libfontconfig1-dev libxcb-xfixes0-dev libxkbcommon-dev python3
+cargo build --release
+
+# install terminfo for alacritty
+if ! infocmp alacritty; then
+    tic -xe alacritty,alacritty-direct extra/alacritty.info
+fi
+
+# install man page for alacritty
+mkdir -p /usr/local/share/man/man1
+gzip -c extra/alacritty.man | sudo tee /usr/local/share/man/man1/alacritty.1.gz > /dev/null
+
+# install completions for bash
+mkdir -p ~/.bash_completion
+cp extra/completions/alacritty.bash ~/.bash_completion/alacritty
+
+# setup keyboard repeat interval and speed
+gsettings set org.gnome.desktop.peripherals.keyboard repeat-interval 30
+gsettings set org.gnome.desktop.peripherals.keyboard delay 250
+
+# install powershell 7.1
+apt-get install -y wget apt-transport-https software-properties-common
+wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+dpkg -i packages-microsoft-prod.deb
+apt update
+add-apt-repository universe
+apt install -y powershell
+
+# neovim python3 provider
+python3 -m pip install --user --upgrade pynvim
+
+# neovim
+curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
+chmod u+x nvim.appimage
+mv nvim.appimage /usr/local/bin/nvim
+
+# TODO: Check if ssh keys are installed. If not generate a new pair
+if [ ! -f ~/.ssh/id_rsa ]; then
+    ssh-keygen -t rsa -b 4096
+fi
+
