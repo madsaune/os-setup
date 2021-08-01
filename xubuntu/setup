@@ -93,3 +93,8 @@ if [ ! -f ~/.ssh/id_rsa ]; then
     ssh-keygen -t rsa -b 4096
 fi
 
+# fetch dotfiles
+cd ~/code/github.com/madsaune
+git clone git@github.com:madsaune/dotfiles.git
+
+./install
